@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from botocore.exceptions import ClientError
 from pandas import DataFrame as Pandas_df
+from pandas import read_csv
 from pyspark.sql.dataframe import DataFrame as Spark_df
 
 from . import (
@@ -218,9 +219,11 @@ def read_fg(query_id: str) -> Optional[Tuple[Optional[Pandas_df], Dict[str, Any]
     try:
         query_status = _poll_query_status(query_id)
         if _query_success(query_status[QUERY_STATUS_KEY]):
-            tmp_file = _download_from_s3(query_status[S3_PATH_KEY])
-            spark_df = spark_utils.csv2spark(tmp_file)
-            return spark_df.toPandas(), query_status
+            s3path = query_status[S3_PATH_KEY]
+            tmp_file = _download_from_s3(s3path)
+            logging.info(f"Saved {s3path}, to local file {tmp_file}")
+            df = read_csv(tmp_file)
+            return df, query_status
         else:
             return None, query_status
     except Exception:
